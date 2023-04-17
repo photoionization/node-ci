@@ -9,6 +9,7 @@ Electron, having both Chromium and Node.js as its dependencies, adopted GN. Many
 
 Some reading material:
 * [GN build system](https://www.chromium.org/developers/gn-build-configuration)
+* [Discussion on adding GN files to upstream Node.js](https://github.com/nodejs/TSC/issues/1353)
 * [Discussion on building Node.js with GN](https://github.com/nodejs/node/issues/21410)
 * [Discussion on building Node.js with cmake](https://github.com/nodejs/TSC/issues/648)
 * [Discussion on building Node.js with Bazel](https://github.com/nodejs/TSC/issues/464)
@@ -31,8 +32,8 @@ Alternatively, you can
 ```bash
 mkdir node-ci
 cd node-ci
-git clone https://chromium.googlesource.com/v8/node-ci
-gclient config https://chromium.googlesource.com/v8/node-ci --unmanaged
+git clone https://github.com/photoionization/node-ci
+gclient config https://github.com/photoionization/node-ci --unmanaged
 ```
 
 ### Build
@@ -75,10 +76,6 @@ git checkout local-v8/<your-branch>
 * Pull necessary sources as dependencies rather than checking in the sources.
 * Stay as up-to-date as possible. The point of this is to be able to build with newest versions of dependencies, including Node.js, V8, and ICU.
 * Simplicity. It should be easy to get up and running.
-
-## Not yet implemented
-* Support building on Windows. The current configurations have been tested for Linux and Mac.
-* Platform-specific OpenSSL build configurations. The current build only supports the slowest platform-independent configuration.
 
 ## Explicit non-goals
 * To translate every configuration from the GYP build.

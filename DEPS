@@ -5,12 +5,10 @@
 gclient_gn_args_file = 'node-ci/build/config/gclient_args.gni'
 gclient_gn_args = [
   'checkout_google_benchmark',
-  'checkout_fuchsia_for_arm64_host'
 ]
 
 vars = {
   'checkout_google_benchmark' : False,
-  'checkout_fuchsia_for_arm64_host' : False,
 
   'abseil_revision': '3f6f1caf8d47704b0771d11570d76ac75b279adc',
   'abseil_url': 'https://chromium.googlesource.com/chromium/src/third_party/abseil-cpp.git',
@@ -39,9 +37,6 @@ vars = {
   'depot_tools_revision': '3f3e2f789e27d41d3c20a555fd60a39ebd631e15',
   'depot_tools_url': 'https://chromium.googlesource.com/chromium/tools/depot_tools.git',
 
-  'fuchsia_sdk_revision': 'f8df9ff79b878d1998970cc04a197061069e48ce',
-  'fuchsia_sdk_url': 'https://chromium.googlesource.com/chromium/src/third_party/fuchsia-sdk.git',
-
   # GN CIPD package version.
   'gn_version': 'git_revision:69ec4fca1fa69ddadae13f9e6b7507efa0675263',
 
@@ -61,13 +56,13 @@ vars = {
   'markupsafe_revision': '13f4e8c9e206567eeb13bf585406ddc574005748',
   'markupsafe_url': 'https://chromium.googlesource.com/chromium/src/third_party/markupsafe.git',
 
-  'node_revision': 'd016b391e5b8b80f04b68973535cafdffcb5f2bf',
-  'node_url': 'https://chromium.googlesource.com/external/github.com/v8/node.git',
+  'node_revision': '90e1b2fec3148d1e0995e2b259d247318c21240b',
+  'node_url': 'https://github.com/zcbenz/node',
 
   'trace_common_revision' : '147f65333c38ddd1ebf554e89965c243c8ce50b3',
   'trace_common_url': 'https://chromium.googlesource.com/chromium/src/base/trace_event/common.git',
 
-  'v8_revision': 'fd4429fb4a8ffbe2d49bcb91a1ced1a466804c17',
+  'v8_revision': 'b85ce48b1ba4b8660636de6687689d8c23b76c2a',
   'v8_url': 'https://chromium.googlesource.com/v8/v8.git',
 
   'zlib_revision': '5edb52d4302d7aef232d585ec9ae27ef5c3c5438',
@@ -87,10 +82,6 @@ deps = {
   'node-ci/node': Var('node_url') + '@' + Var('node_revision'),
   'node-ci/third_party/abseil-cpp': Var('abseil_url') + '@' + Var('abseil_revision'),
   'node-ci/third_party/depot_tools': Var('depot_tools_url') + '@' + Var('depot_tools_revision'),
-  'node-ci/third_party/fuchsia-sdk': {
-    'url': Var('fuchsia_sdk_url') + '@' + Var('fuchsia_sdk_revision'),
-    'condition': 'checkout_fuchsia',
-  },
   'node-ci/third_party/googletest/src': Var('googletest_url') + '@' + Var('googletest_revision'),
   'node-ci/third_party/icu': Var('icu_url') + '@' + Var('icu_revision'),
   'node-ci/third_party/jinja2': Var('jinja2_url') + '@' + Var('jinja2_revision'),
@@ -151,9 +142,59 @@ deps = {
 
 hooks = [
   {
-    'name': 'generate_node_filelist',
-    'pattern': 'node-ci/node',
-    'action': ['python3', 'node-ci/tools/generate_node_files_json.py'],
+    'name': 'sysroot_arm',
+    'pattern': '.',
+    'condition': 'checkout_linux and checkout_arm',
+    'action': ['python3', 'node-ci/build/linux/sysroot_scripts/install-sysroot.py',
+               '--arch=arm'],
+  },
+  {
+    'name': 'sysroot_arm64',
+    'pattern': '.',
+    'condition': 'checkout_linux and checkout_arm64',
+    'action': ['python3', 'node-ci/build/linux/sysroot_scripts/install-sysroot.py',
+               '--arch=arm64'],
+  },
+  {
+    'name': 'sysroot_x86',
+    'pattern': '.',
+    'condition': 'checkout_linux and (checkout_x86 or checkout_x64)',
+    'action': ['python3', 'node-ci/build/linux/sysroot_scripts/install-sysroot.py',
+               '--arch=x86'],
+  },
+  {
+    'name': 'sysroot_mips',
+    'pattern': '.',
+    'condition': 'checkout_linux and checkout_mips',
+    'action': ['python3', 'node-ci/build/linux/sysroot_scripts/install-sysroot.py',
+               '--arch=mips'],
+  },
+  {
+    'name': 'sysroot_mips64',
+    'pattern': '.',
+    'condition': 'checkout_linux and checkout_mips64',
+    'action': ['python3', 'node-ci/build/linux/sysroot_scripts/install-sysroot.py',
+               '--arch=mips64el'],
+  },
+  {
+    'name': 'sysroot_x64',
+    'pattern': '.',
+    'condition': 'checkout_linux and checkout_x64',
+    'action': ['python3', 'node-ci/build/linux/sysroot_scripts/install-sysroot.py',
+               '--arch=x64'],
+  },
+  {
+    # Case-insensitivity for the Win SDK. Must run before win_toolchain below.
+    'name': 'ciopfs_linux',
+    'pattern': '.',
+    'condition': 'checkout_win and host_os == "linux"',
+    'action': [ 'python3',
+                'node-ci/third_party/depot_tools/download_from_google_storage.py',
+                '--no_resume',
+                '--no_auth',
+                '--bucket', 'chromium-browser-clang/ciopfs',
+                '-s', 'node-ci/build/ciopfs.sha1',
+    ]
   },
   {
     # Update the Windows toolchain if necessary.
@@ -188,14 +229,5 @@ hooks = [
     'action': ['python3',
                'node-ci/build/linux/sysroot_scripts/install-sysroot.py',
                '--arch=x64'],
-  },
-  {
-    'name': 'fuchsia_sdk',
-    'pattern': '.',
-    'condition': 'checkout_fuchsia',
-    'action': [
-      'python3',
-      'node-ci/build/fuchsia/update_sdk.py',
-    ],
   },
 ]

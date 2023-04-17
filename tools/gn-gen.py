@@ -25,7 +25,6 @@ def GenerateBuildFiles(options):
   if options.sysroot:
     gn_args.append('use_sysroot=true')
     gn_args.append('use_custom_libcxx=true')
-    gn_args.append('node_use_custom_libcxx=true')
 
   if options.target_os:
     gn_args.append('target_os="' + options.target_os + '"')
@@ -55,8 +54,6 @@ def GenerateBuildFiles(options):
   gn_args.append('node_use_code_cache=%s' % ToBool(not options.no_cache))
   gn_args.append('v8_enable_snapshot_compression=false')
   # Override system's OpenSSL configs for tests.
-  gn_args.append('openssl_dir=""')
-  gn_args.append('openssl_seclevel=1')
   gn_args.append('v8_enable_javascript_promise_hooks=true')
   gn_args.append('v8_scriptormodule_legacy_lifetime=true')
 

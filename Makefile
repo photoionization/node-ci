@@ -27,11 +27,11 @@ out/fuchsia:
 # Build
 .PHONY: build.Release
 build.Release: out/Release
-	autoninja -C $< test_all
+	autoninja -C $< node
 
 .PHONY:
 build.Debug: out/Debug
-	autoninja -C $< test_all
+	autoninja -C $< node
 
 .PHONY: build.fuchsia
 build.fuchsia: out/fuchsia

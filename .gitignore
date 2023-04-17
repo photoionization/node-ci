@@ -3,7 +3,15 @@
 /build
 /buildtools/
 /node
-/third_party
+/third_party/abseil-cpp
+/third_party/depot_tools
+/third_party/googletest/src
+/third_party/icu
+/third_party/llvm-build
+/third_party/ninja
+/third_party/jinja2
+/third_party/markupsafe
+/third_party/zlib
 /tools/clang
 /v8
 
@@ -11,4 +19,4 @@
 /out
 
 # Generated
-/node_files.json
+*.swp
