@@ -1,0 +1,135 @@
+name: node
+
+on: push
+
+env:
+  WIN_SDK_VERSION: 22621
+
+jobs:
+  build:
+    needs: [vs-toolchain]
+    runs-on: ${{ fromJson('{"linux":"ubuntu-22.04","mac":"macos-12","win":"ubuntu-22.04"}')[matrix.targetOs] }}
+    continue-on-error: false
+
+    strategy:
+      fail-fast: false
+      matrix:
+        targetOs: [linux, mac, win]
+        arch: [x64, arm64]
+        include:
+          - targetOs: linux
+            arch: x86
+          - targetOs: win
+            arch: x86
+
+    steps:
+      - name: Prepare to Install Linux Dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt update
+
+      - name: Install Linux Dependencies
+        if: runner.os == 'Linux' && matrix.targetOs == 'win'
+        # Needed for running ciopfs, used when setup vs toolchain.
+        run: sudo apt install -y fuse
+
+      - name: Install Linux Cross Compilation Toolchains
+        if: matrix.targetOs == 'linux' && matrix.arch != 'x64'
+        run: sudo apt install -y gcc-multilib g++-multilib
+
+      - name: Install Linux Arm Toolchains
+        if: matrix.targetOs == 'linux' && startsWith(matrix.arch, 'arm')
+        run: sudo apt install -y gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf libc6-dev-armhf-cross linux-libc-dev-armhf-cross binutils-aarch64-linux-gnu
+
+      - uses: actions/setup-python@v3
+        with:
+          python-version: '3.x'
+
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          path: node-ci
+
+      - name: Checkout depot_tools
+        run: |
+          git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git
+
+      - name: Get Windows SDK
+        if: matrix.targetOs == 'win'
+        uses: actions/cache/restore@v3
+        with:
+          path: '*.zip'
+          key: vs-toolchain-${{ env.WIN_SDK_VERSION }}
+          fail-on-cache-miss: true
+          enableCrossOsArchive: true
+
+      - name: Sync
+        run: |
+          PATH=$PATH:$(pwd)/depot_tools
+          DEPOT_TOOLS_WIN_TOOLCHAIN=0
+          gclient config https://github.com/photoionization/node-ci --unmanaged
+          echo "target_os = ['${{ matrix.targetOs }}']" >> .gclient
+          echo "target_cpu = ['${{ matrix.arch }}']" >> .gclient
+          gclient sync
+
+      - name: Setup Windows SDK
+        if: matrix.targetOs == 'win'
+        run: node node-ci/tools/setup_vs_toolchain.js
+
+      - name: Build
+        run: |
+          PATH=$PATH:$(pwd)/depot_tools
+          cd node-ci
+          ./tools/gn-gen.py out/Release --sysroot --target_os=${{ matrix.targetOs }} --target_cpu=${{ matrix.arch }}
+          autoninja -C out/Release
+
+  vs-toolchain:
+    runs-on: windows-2022
+    continue-on-error: false
+
+    steps:
+      - name: Check cache
+        id: check-cache
+        # It is not job failure when this step fails.
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          # Check if vs-toolchain has been generated before.
+          gh extension install actions/gh-actions-cache
+          gh actions-cache list --repo $GITHUB_REPOSITORY | grep -q vs-toolchain-$WIN_SDK_VERSION
+
+      - name: Validate branch
+        if: steps.check-cache.outcome == 'failure'
+        run: |
+          # GitHub limits where cache is accessible, we don't want to create
+          # vs toolchain for every branch so force creating one on main branch.
+          if (${env:GITHUB_BASE_REF}) {
+            $env:GIT_BRANCH = ${env:GITHUB_BASE_REF}
+          } else {
+            $env:GIT_BRANCH = ${env:GITHUB_REF} -replace '^refs/heads/', ''
+          }
+          if (${env:GIT_BRANCH} -ne 'main') {
+            Write-Output 'Can not create vs-toolchain in a sub-branch, please re-run the main branch job.'
+            Write-Output "The value of GIT_BRANCH is: ${env:GIT_BRANCH}."
+            Exit 1
+          }
+
+      - name: Checkout
+        if: steps.check-cache.outcome == 'failure'
+        uses: actions/checkout@v3
+        with:
+          repository: yue/build-gn
+
+      - name: Generate Windows SDK package
+        if: steps.check-cache.outcome == 'failure'
+        # See: https://chromium.googlesource.com/chromium/src/+/master/docs/win_cross.md
+        run: python third_party/depot_tools/win_toolchain/package_from_installed.py 2022 -w 10.0.${env:WIN_SDK_VERSION}.0
+
+      - name: Save to cache
+        uses: actions/cache/save@v3
+        if: steps.check-cache.outcome == 'failure'
+        with:
+          path: '*.zip'
+          key: vs-toolchain-${{ env.WIN_SDK_VERSION }}
+          enableCrossOsArchive: true
