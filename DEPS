@@ -56,7 +56,7 @@ vars = {
   'markupsafe_revision': '13f4e8c9e206567eeb13bf585406ddc574005748',
   'markupsafe_url': 'https://chromium.googlesource.com/chromium/src/third_party/markupsafe.git',
 
-  'node_revision': '90e1b2fec3148d1e0995e2b259d247318c21240b',
+  'node_revision': '79070a07387d91bd5cbf3bc1927878db8d3c11ac',
   'node_url': 'https://github.com/zcbenz/node',
 
   'trace_common_revision' : '147f65333c38ddd1ebf554e89965c243c8ce50b3',
