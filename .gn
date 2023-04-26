@@ -24,6 +24,7 @@ exec_script_whitelist =
   build_dotfile_settings.exec_script_whitelist + [
     "//v8/build_overrides/build.gni",
     "//node/BUILD.gn",
+    "//node/unofficial.gni",
     "//node/tools/inspector_protocol/BUILD.gn",
     "//node/deps/ada/BUILD.gn",
     "//node/deps/llhttp/BUILD.gn",
